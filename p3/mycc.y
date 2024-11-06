@@ -1,4 +1,9 @@
-/* TODO: TO BE COMPLETED */
+/* 
+Price, Chris, Lian, Gorana
+File: mycc.y
+Program: P3
+GCSC 554
+*/
 
 %{
 
@@ -33,13 +38,70 @@ static struct ClassFile cf;
 /* Note: install_id() returns Symbol* for both keywords and identifiers */
 %token <sym> BREAK DO ELSE FOR IF RETURN WHILE
 
-/* Declare operator tokens */
-/* TODO: TO BE COMPLETED WITH ASSOCIATIVITY AND PRECEDENCE DECLARATIONS */
-%token PA NA TA DA MA AA XA OA LA RA OR AN EQ NE LE GE LS RS AR PP NN
+/* Declare operator tokens with associativity and precedence */
+//1st Precedence 
+%left PP      //Postfix increment '++'
+%left NN      //Postfix decrement '--'
+%left '.'     //Dot Operator - Left to right
+   
+//2nd Precedence
+%right '!'     //Logical not
+%right '~'     //Bitwise complement
+
+//3rd Precedence
+%left '*'       //Multiplication
+%left '/'       //Division
+%left '%'       //Modulus
+
+//4th Precedence
+%right '+'      //Addition 
+%right '-'      //Subtraction
+
+//5th Precedence
+%left LS      //Left Shift '<<'
+%left RS      //Right Shift '>>'
+
+//6th Precedence
+%left LE      //Less than or equal to '<='
+%left GE      //Greater than or equal to '>='
+%left '<'      //Relational less than 
+%left '>'      //Relational greater than 
+
+//7th Precedence
+%left EQ        //Equal to '=='
+%left NE        //Not equal to '!='
+
+//8th Precedence
+%left '&'       //Bitwise AND  
+
+//9th Precedence
+%left '^'       //Bitwise exclusive OR
+
+//10th Precedence
+%left '|'       //Bitwise inclusive OR
+
+//11th Precedence
+%left AN      //Logical AND '&&'
+
+//12th Precedence
+%left OR      //Logical OR '||'
+
+//14th Precedence
+%right RA       //Right Shift Assignment '>>='
+%right LA       //Left Shift Assignment '<<='
+%right PA       //Plus Assignment '+='
+%right NA       //Minus Assignment '-='
+%right TA       //Times Assignment '*='
+%right DA       //Divide Assignment '/='
+%right MA       //Modulo Assignment '%='
+%right AA       //AND Assignment '&='
+%right XA       //XOR Assignment '^='
+%right OA       //OR Assignment '|='
+%right AR       //Assignment '='
 
 /* Declare attribute types for marker nonterminals, such as L M and N */
-/* TODO: TO BE COMPLETED WITH ADDITIONAL NONMARKERS AS NECESSARY */
-%type <loc> L M N
+/* Added O */
+%type <loc> L M N O
 
 %%
 
@@ -49,16 +111,40 @@ stmts   : stmts stmt
 
 stmt    : ';'
         | expr ';'      { emit(pop); /* do not leave a value on the stack */ }
-        | IF '(' expr ')' stmt
-                        { /* TODO: TO BE COMPLETED */ error("if-then not implemented"); }
-        | IF '(' expr ')' stmt ELSE stmt
-                        { /* TODO: TO BE COMPLETED */ error("if-then-else not implemented"); }
-        | WHILE '(' expr ')' stmt
-                        { /* TODO: TO BE COMPLETED */ error("while-loop not implemented"); }
-        | DO stmt WHILE '(' expr ')' ';'
-                        { /* TODO: TO BE COMPLETED */ error("do-while-loop not implemented"); }
-        | FOR '(' expr ';' expr ';' expr ')' stmt
-                        { /* TODO: TO BE COMPLETED */ error("for-loop not implemented"); }
+        | IF '(' expr ')' M stmt
+                        { // Backpatch the location stored in M to jump to the stmt if the condition is true
+                        backpatch($5, pc - $5); }
+
+        | IF '(' expr ')' M stmt ELSE N L stmt L
+                        { // Backpatch to the 'else' stmt if the condition is false
+                        backpatch($5, $9 - $5);
+                        // Backpatch to the end after the 'else' statement
+                        backpatch($8, $11 - $8); }
+
+        | WHILE '(' L expr ')' M stmt N
+                        { // Backpatch the conditional jump location M to execute the stmt if the condition is true
+                        backpatch($6, pc - $6);
+                        // Unconditional jump to reevaluate the condition
+                        backpatch($8, $3 - $8);
+                        }
+
+        | DO L stmt WHILE '(' expr ')' M N L ';'
+                        { // Backpatch the conditional jump M to go to the beginning of DO
+                        backpatch($8, $10 - $8);
+                        // Backpatch to ensure the loop exits if the condition is false
+                        backpatch($9, $2 - $9);
+                        }
+        | FOR '(' expr O ';' L expr M N ';' L expr O N ')' L stmt N
+                        { // Backpatch the condition check to jump to the stmt if true 
+                        backpatch($8, pc - $8);
+                        // Jump to the increment step 
+                        backpatch($9, $16 - $9);
+                        // Ensure that after the increment, we recheck the condition 
+                        backpatch($14, $6 - $14);
+                        // Backpatch to return to the condition after the stmt 
+                        backpatch($18, $11 - $18);
+                        }
+
         | RETURN expr ';'
                         { emit(istore_2); /* return val goes in local var 2 */ }
         | BREAK ';'
@@ -68,34 +154,59 @@ stmt    : ';'
         ;
 
 expr    : ID   '=' expr { emit(dup); emit2(istore, $1->localvar); }
-        | ID   PA  expr { /* TODO: TO BE COMPLETED */ error("+= operator not implemented"); }
-        | ID   NA  expr { /* TODO: TO BE COMPLETED */ error("-= operator not implemented"); }
-        | ID   TA  expr { /* TODO: TO BE COMPLETED */ error("*= operator not implemented"); }
-        | ID   DA  expr { /* TODO: TO BE COMPLETED */ error("/= operator not implemented"); }
-        | ID   MA  expr { /* TODO: TO BE COMPLETED */ error("%= operator not implemented"); }
-        | ID   AA  expr { /* TODO: TO BE COMPLETED */ error("&= operator not implemented"); }
-        | ID   XA  expr { /* TODO: TO BE COMPLETED */ error("^= operator not implemented"); }
-        | ID   OA  expr { /* TODO: TO BE COMPLETED */ error("|= operator not implemented"); }
-        | ID   LA  expr { /* TODO: TO BE COMPLETED */ error("<<= operator not implemented"); }
-        | ID   RA  expr { /* TODO: TO BE COMPLETED */ error(">>= operator not implemented"); }
-        | expr OR  expr { /* TODO: TO BE COMPLETED */ error("|| operator not implemented"); }
-        | expr AN  expr { /* TODO: TO BE COMPLETED */ error("&& operator not implemented"); }
-        | expr '|' expr { /* TODO: TO BE COMPLETED */ error("| operator not implemented"); }
-        | expr '^' expr { /* TODO: TO BE COMPLETED */ error("^ operator not implemented"); }
-        | expr '&' expr { /* TODO: TO BE COMPLETED */ error("& operator not implemented"); }
+        // ID += expr: Load the current value of ID, add expr, and store the result back into ID
+        | ID   PA  expr { emit2(iload , $1->localvar); emit(iadd); emit(dup); emit2(istore, $1->localvar); }
+        // ID -= expr: Load the current value of ID, subtract expr, and store the result back into ID
+        | ID   NA  expr { emit2(iload , $1->localvar); emit(swap); emit(isub); emit(dup); emit2(istore, $1->localvar); }
+        // ID *= expr: Load the current value of ID, multiply by expr, and store the result back into ID
+        | ID   TA  expr { emit2(iload , $1->localvar); emit(imul); emit(dup); emit2(istore, $1->localvar); }
+        // ID /= expr: Load the current value of ID, divide by expr, and store the result back into ID
+        | ID   DA  expr { emit2(iload , $1->localvar); emit(swap); emit(idiv); emit(dup); emit2(istore, $1->localvar); }
+        // ID %= expr: Load the current value of ID, calculate the remainder with expr, and store the result back into ID
+        | ID   MA  expr { emit2(iload , $1->localvar); emit(swap); emit(irem); emit(dup); emit2(istore, $1->localvar); }
+        // ID &= expr: Perform bitwise AND on ID and expr, store the result back into ID
+        | ID   AA  expr { emit2(iload , $1->localvar); emit(iand); emit(dup); emit2(istore, $1->localvar); }
+        // ID ^= expr: Perform bitwise XOR on ID and expr, store the result back into ID
+        | ID   XA  expr { emit2(iload , $1->localvar); emit(ixor); emit(dup); emit2(istore, $1->localvar); }
+        // ID |= expr: Perform bitwise OR on ID and expr, store the result back into ID
+        | ID   OA  expr { emit2(iload , $1->localvar); emit(ior); emit(dup); emit2(istore, $1->localvar); }
+        // ID <<= expr: Perform bitwise left shift on ID by expr, store the result back into ID
+        | ID   LA  expr { emit2(iload , $1->localvar); emit(swap); emit(ishl); emit(dup); emit2(istore, $1->localvar); }
+        // ID >>= expr: Perform bitwise right shift on ID by expr, store the result back into ID
+        | ID   RA  expr { emit2(iload , $1->localvar); emit(swap); emit(ishr); emit(dup); emit2(istore, $1->localvar); }
+        // Perform bitwise OR on expr 
+        | expr OR  expr { emit(ior); }
+        // Perform bitwise AND on expr 
+        | expr AN  expr { emit(iand); }
+        // Perform bitwise OR on expr 
+        | expr '|' expr { emit(ior); }
+        // Perform bitwise XOR on expr 
+        | expr '^' expr { emit(ixor); }
+        // Perform bitwise AND on expr 
+        | expr '&' expr { emit(iand); }
+
         | expr EQ  expr { /* TODO: TO BE COMPLETED */ error("== operator not implemented"); }
         | expr NE  expr { /* TODO: TO BE COMPLETED */ error("!= operator not implemented"); }
         | expr '<' expr { /* TODO: TO BE COMPLETED */ error("< operator not implemented"); }
         | expr '>' expr { /* TODO: TO BE COMPLETED */ error("> operator not implemented"); }
         | expr LE  expr { /* TODO: TO BE COMPLETED */ error("<= operator not implemented"); }
         | expr GE  expr { /* TODO: TO BE COMPLETED */ error(">= operator not implemented"); }
-        | expr LS  expr { /* TODO: TO BE COMPLETED */ error("<< operator not implemented"); }
-        | expr RS  expr { /* TODO: TO BE COMPLETED */ error(">> operator not implemented"); }
-        | expr '+' expr { /* TODO: TO BE COMPLETED */ error("+ operator not implemented"); }
-        | expr '-' expr { /* TODO: TO BE COMPLETED */ error("- operator not implemented"); }
-        | expr '*' expr { /* TODO: TO BE COMPLETED */ error("* operator not implemented"); }
-        | expr '/' expr { /* TODO: TO BE COMPLETED */ error("/ operator not implemented"); }
-        | expr '%' expr { /* TODO: TO BE COMPLETED */ error("% operator not implemented"); }
+        
+        // Perform left shift operation
+        | expr LS expr { emit(ishl); } // Emit bytecode for left shift operation (<<)
+        /* Perform right shift operation */
+        | expr RS expr { emit(ishr); }  // Emit bytecode for right shift operation (>>)
+        /* Perform addition */
+        | expr '+' expr { emit(iadd); } // Emit bytecode for integer addition
+        /* Perform subtraction */
+        | expr '-' expr { emit(isub); } // Emit bytecode for integer subtraction
+        /* Perform multiplication */
+        | expr '*' expr { emit(imul); } // Emit bytecode for integer multiplication
+        /* Perform division */
+        | expr '/' expr { emit(idiv); } // Emit bytecode for integer division
+        /* Perform modulus operation */
+        | expr '%' expr { emit(irem); } // Emit bytecode for integer remainder (modulus)
+
         | '!' expr      { /* TODO: TO BE COMPLETED */ error("! operator not implemented"); }
         | '~' expr      { /* TODO: TO BE COMPLETED */ error("~ operator not implemented"); }
         | '+' expr %prec '!' /* '+' at same precedence level as '!' */
@@ -129,7 +240,9 @@ N       : /* empty */   { $$ = pc;	/* location of inst. to backpatch */
 			}
         ;
 
-/* TODO: TO BE COMPLETED WITH ADDITIONAL NONMARKERS AS NEEDED */
+O       : /* empty */   { $$ = pc;	/* location of inst. to backpatch */
+			  emit3(goto_, 0);
+		        } 
 
 %%
 
