@@ -1,46 +1,49 @@
-/* TODO: TO BE COMPLETED */
+/*
+Price, Chris, Gorana, Lian
+Program: p3
+File:symbol.c
+*/
 
 #include "global.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#define STRMAX 999      //Max character per STRING
-#define SYMMAX 100      //Mas symbol
 
-/* TODO: define a symbol table/array, reuse project Pr1 */
-struct entry symtable[];
+#define STRMAX 999      // Max characters per string
+#define SYMMAX 100      // Max symbols
+
+/* Define the symbol table */
+struct entry {
+    char *lexptr;
+    int token;
+};
+
+struct entry symtable[SYMMAX];
 int varIndex;
 int lastEntry = 0;
 
-Symbol *lookup(const char *s)
-{
-        /* TODO: TO BE COMPLETED */
-	Symobl *rc = NULL;
-	//loop throught the table
-	for (int i = 0; i < lastEntry; i++){
-		// compare *s to table
-		if(strcmp(symtable[i].lexptr, s) == 0){
-			rc = &symtable[p]
-			break;
-		}
-	}
-	return rc;
+Symbol *lookup(const char *s) {
+    Symbol *rc = NULL;
+    // Loop through the table
+    for (int i = 0; i < lastEntry; i++) {
+        // Compare *s to table entry
+        if (strcmp(symtable[i].lexptr, s) == 0) {
+            rc = &symtable[i];
+            break;
+        }
+    }
+    return rc;
 }
 
-Symbol *insert(const char *s, int token)
-{
-        /* TODO: TO BE COMPLETED */
-
-	if (lastEntry +1 == SYMMAX){
-		 error("symbol table full");
-	}
-	
-	//put token into the symtable token of index lastEntry 
-	symtable[lastEntry].token = token;
-	//put the string into the symtable of index lastEntry
-	symtable[lastEntry].lexptr = s;
-
-
-	return NULL;
+Symbol *insert(const char *s, int token) {
+    if (lastEntry + 1 == SYMMAX) {
+        error("symbol table full");
+    }
+    // Store token and duplicated string
+    symtable[lastEntry].token = token;
+    symtable[lastEntry].lexptr = strdup(s);  // Ensure string is copied
+    lastEntry++;
+    
+    return &symtable[lastEntry - 1]; // Return pointer to the new entry
 }
