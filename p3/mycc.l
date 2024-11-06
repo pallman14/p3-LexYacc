@@ -1,4 +1,6 @@
-/* TODO: TO BE COMPLETED */
+/* Price, Chris, Lian, Gorana */
+/* Program: 3 */
+/* file: mycc.l */
 
 %option noyywrap
 %option yylineno
@@ -18,21 +20,30 @@ static int install_hex();
 static int install_chr();
 
 %}
-
-digit           [0-9]
-alpha           [a-zA-Z_]
-id              {alpha}({alpha}|{digit})*
-int             {digit}+
+/*From p2*/
+quote	\'
+ditto	\"
+delim	[ \t\n\v\r\f]
+ws		{delim}+
+alpha   [a-zA-Z_]
+digit   [0-9]
+oct		[0-7]
+exp		[eE][+-]?{digit}+
+hex     [{digit}a-fA-F]
+id		{alpha}({alpha}|{digit})*
+number	{digit}*\.{digit}*{exp}?
+int		{digit}+
 
 %%
 
 [ \t\v\n\f\r]                  /* skip white space */
-___                            /* TODO: TO BE COMPLETED: ignore inline and multiline comments */
+\/\/.*	                       // ignore inline comments
+\/\*([^*]|(\*+[^*/]))*\*+\/		// ignore multiline comments 
 {id}                           { return install_id(); }
-___                            { /* TODO: TO BE COMPLETED */ return install_oct(); }
-___                            { /* TODO: TO BE COMPLETED */ return install_hex(); }
-___                            { /* TODO: TO BE COMPLETED */ return install_chr(); }
-{int}                          { return install_int(); }
+0{oct}+                        { return install_oct(); }
+0(x|X){hex}                    { return install_hex(); }
+{quote}([^']|\\')*{quote}      { return install_chr(); }
+{int}						   { return install_int(); }
 "+="                           { return PA; }
 "-="                           { return NA; }
 "*="                           { return TA; }
