@@ -10,7 +10,6 @@ File:symbol.c
 #include <stdlib.h>
 #include <string.h>
 
-#define STRMAX 999      // Max characters per string
 #define SYMMAX 1024      // Max symbols
 
 /* Define the symbol table */
