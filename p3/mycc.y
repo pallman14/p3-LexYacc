@@ -207,25 +207,85 @@ expr    : ID   '=' expr { emit(dup); emit2(istore, $1->localvar); }
         /* Perform modulus operation */
         | expr '%' expr { emit(irem); } // Emit bytecode for integer remainder (modulus)
 
-        | '!' expr      { /* TODO: TO BE COMPLETED */ error("! operator not implemented"); }
-        | '~' expr      { /* TODO: TO BE COMPLETED */ error("~ operator not implemented"); }
-        | '+' expr %prec '!' /* '+' at same precedence level as '!' */
-                        { /* TODO: TO BE COMPLETED */ error("unary + operator not implemented"); }
-        | '-' expr %prec '!' /* '-' at same precedence level as '!' */
-                        { /* TODO: TO BE COMPLETED */ error("unary - operator not implemented"); }
-        | '(' expr ')'
-        | '$' INT8      { emit(aload_1); emit2(bipush, $2); emit(iaload); }
-        | PP ID         { /* TODO: TO BE COMPLETED */ error("pre ++ operator not implemented"); }
-        | NN ID         { /* TODO: TO BE COMPLETED */ error("pre -- operator not implemented"); }
-        | ID PP         { /* TODO: TO BE COMPLETED */ error("post ++ operator not implemented"); }
-        | ID NN         { /* TODO: TO BE COMPLETED */ error("post -- operator not implemented"); }
-        | ID            { emit2(iload, $1->localvar); }
-        | INT8          { emit2(bipush, $1); }
-        | INT16         { emit3(sipush, $1); }
-        | INT32         { emit2(ldc, constant_pool_add_Integer(&cf, $1)); }
-	| FLT		{ error("float constant not supported in Pr3"); }
-	| STR		{ error("string constant not supported in Pr3"); }
+        // Logical NOT operation: Negate the value of the expression, add 1 to flip the result.
+        | '!' expr { emit(ineg); emit(iconst_1); emit(iadd); }
+        // Bitwise NOT operation: Negate the value and add 1 to get the bitwise complement.
+        | '~' expr { emit(ineg); emit(iconst_1); emit(iadd); }
+        // '+' at the same precedence level as '!' 
+        | '+' expr %prec '!' {  // Unary '+' does nothing, so leave empty to ignore this case.
+        }
+        // '-' at the same precedence level as '!' 
+        | '-' expr %prec '!' { 
+                 // Unary minus: Negate the value of the expression.
+                emit(ineg); 
+        }
+        | '(' expr ')' { 
+        // Expression enclosed in parentheses: Do nothing special, just evaluate the inner expression.
+        }
+        | '$' INT8 { 
+                // Load value from an array stored in the first local variable, indexed by the given INT8.
+                emit(aload_1); 
+                emit2(bipush, $2); 
+                emit(iaload); 
+        }
+        | PP ID { 
+                // Pre-increment: Increment the value of ID by 1, duplicate the result, and store it back in ID.
+                emit(iconst_1); 
+                emit2(iload, $2->localvar); 
+                emit(iadd); 
+                emit(dup); 
+                emit2(istore, $2->localvar); 
+        }
+        | NN ID { 
+                // Pre-decrement: Load the value of ID, subtract 1, duplicate the result, and store it back in ID.
+                emit2(iload, $2->localvar); 
+                emit(iconst_1); 
+                emit(isub); 
+                emit(dup); 
+                emit2(istore, $2->localvar); 
+        }
+        | ID PP { 
+                // Post-increment: Load the value of ID, duplicate it, increment by 1, and store the result back in ID.
+                emit2(iload, $1->localvar); 
+                emit(dup); 
+                emit(iconst_1); 
+                emit(iadd); 
+                emit2(istore, $1->localvar); 
+        }
+        | ID NN { 
+                // Post-decrement: Load the value of ID, duplicate it, subtract 1, and store the result back in ID.
+                emit2(iload, $1->localvar); 
+                emit(dup); 
+                emit(iconst_1); 
+                emit(isub); 
+                emit2(istore, $1->localvar); 
+        }
+        | ID { 
+                // Simple variable reference: Load the value of ID onto the stack.
+                emit2(iload, $1->localvar); 
+        }
+        | INT8 { 
+                // Load an 8-bit integer constant onto the stack.
+                emit2(bipush, $1); 
+        }
+        | INT16 { 
+                // Load a 16-bit integer constant onto the stack.
+                emit3(sipush, $1); 
+        }
+        | INT32 { 
+                // Load a 32-bit integer constant onto the stack using the constant pool.
+                emit2(ldc, constant_pool_add_Integer(&cf, $1)); 
+        }
+        | FLT { 
+                // Floating-point constants are not supported in this project.
+                error("float constant not supported in Pr3"); 
+        }
+        | STR { 
+                // String constants are not supported in this project.
+                error("string constant not supported in Pr3"); 
+        }
         ;
+
 
 L       : /* empty */   { $$ = pc; }
         ;
