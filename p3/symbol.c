@@ -19,7 +19,7 @@ struct entry {
     int token;
 };
 
-struct entry symtable[SYMMAX];
+struct Symbol symtable[SYMMAX];
 int varIndex;
 int lastEntry = 0;
 
