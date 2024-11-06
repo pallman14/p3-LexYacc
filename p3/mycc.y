@@ -185,13 +185,48 @@ expr    : ID   '=' expr { emit(dup); emit2(istore, $1->localvar); }
         // Perform bitwise AND on expr 
         | expr '&' expr { emit(iand); }
 
-        | expr EQ  expr { /* TODO: TO BE COMPLETED */ error("== operator not implemented"); }
-        | expr NE  expr { /* TODO: TO BE COMPLETED */ error("!= operator not implemented"); }
-        | expr '<' expr { /* TODO: TO BE COMPLETED */ error("< operator not implemented"); }
-        | expr '>' expr { /* TODO: TO BE COMPLETED */ error("> operator not implemented"); }
-        | expr LE  expr { /* TODO: TO BE COMPLETED */ error("<= operator not implemented"); }
-        | expr GE  expr { /* TODO: TO BE COMPLETED */ error(">= operator not implemented"); }
-        
+        // expr == expr: Compare if two expressions are equal, if true push 1, otherwise skip to the next instruction.
+        | expr EQ expr { 
+                emit3(if_icmpeq, 7); // Compare the two topmost values on the stack. If they are equal, jump 7 bytes ahead.
+                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
+                emit(iconst_1); // If they are equal, push 1 (true) to the stack.
+        }
+
+        // expr != expr: Compare if two expressions are not equal, if true push 1, otherwise skip to the next instruction.
+        | expr NE expr { 
+                emit3(if_icmpne, 7); // Compare the two topmost values on the stack. If they are not equal, jump 7 bytes ahead.
+                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
+                emit(iconst_1); // If they are not equal, push 1 (true) to the stack.
+        }
+
+        // expr < expr: Compare if the first expression is less than the second, if true push 1, otherwise skip to the next instruction.
+        | expr '<' expr { 
+                emit3(if_icmplt, 7); // Compare if the first value is less than the second. If true, jump 7 bytes ahead.
+                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
+                emit(iconst_1); // If the first value is less, push 1 (true) to the stack.
+        }
+
+        // expr > expr: Compare if the first expression is greater than the second, if true push 1, otherwise skip to the next instruction.
+        | expr '>' expr { 
+                emit3(if_icmpgt, 7); // Compare if the first value is greater than the second. If true, jump 7 bytes ahead.
+                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
+                emit(iconst_1); // If the first value is greater, push 1 (true) to the stack.
+        }
+
+        // expr <= expr: Compare if the first expression is less than or equal to the second, if true push 1, otherwise skip to the next instruction.
+        | expr LE expr { 
+                emit3(if_icmple, 7); // Compare if the first value is less than or equal to the second. If true, jump 7 bytes ahead.
+                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
+                emit(iconst_1); // If the first value is less than or equal, push 1 (true) to the stack.
+        }
+
+        // expr >= expr: Compare if the first expression is greater than or equal to the second, if true push 1, otherwise skip to the next instruction.
+        | expr GE expr { 
+                emit3(if_icmpge, 7); // Compare if the first value is greater than or equal to the second. If true, jump 7 bytes ahead.
+                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
+                emit(iconst_1); // If the first value is greater than or equal, push 1 (true) to the stack.
+        }
+
         // Perform left shift operation
         | expr LS expr { emit(ishl); } // Emit bytecode for left shift operation (<<)
         /* Perform right shift operation */
@@ -418,4 +453,6 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
+
 
