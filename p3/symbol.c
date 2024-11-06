@@ -11,7 +11,7 @@ File:symbol.c
 #include <string.h>
 
 #define STRMAX 999      // Max characters per string
-#define SYMMAX 100      // Max symbols
+#define SYMMAX 1024      // Max symbols
 
 /* Define the symbol table */
 struct entry {
