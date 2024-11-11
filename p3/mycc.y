@@ -100,8 +100,8 @@ static struct ClassFile cf;
 %right AR       //Assignment '='
 
 /* Declare attribute types for marker nonterminals, such as L M and N */
-/* Added O */
-%type <loc> L M N O
+/* Added P to implement for loop */
+%type <loc> L M N P
 
 %%
 
@@ -115,11 +115,11 @@ stmt    : ';'
                         { // Backpatch the location stored in M to jump to the stmt if the condition is true
                         backpatch($5, pc - $5); }
 
-        | IF '(' expr ')' M stmt ELSE N L stmt L
+        | IF '(' expr ')' M stmt N ELSE L stmt L
                         { // Backpatch to the 'else' stmt if the condition is false
                         backpatch($5, $9 - $5);
                         // Backpatch to the end after the 'else' statement
-                        backpatch($8, $11 - $8); }
+                        backpatch($7, $11 - $7); }
 
         | WHILE '(' L expr ')' M stmt N
                         { // Backpatch the conditional jump location M to execute the stmt if the condition is true
@@ -134,15 +134,15 @@ stmt    : ';'
                         // Backpatch to ensure the loop exits if the condition is false
                         backpatch($9, $2 - $9);
                         }
-        | FOR '(' expr O ';' L expr M N ';' L expr O N ')' L stmt N
-                        { // Backpatch the condition check to jump to the stmt if true 
+        | FOR '(' expr P ';' L expr M N ';' L expr N ')' L stmt N
+                        { // Backpatch the condition check to jump to the stmt if true
                         backpatch($8, pc - $8);
-                        // Jump to the increment step 
-                        backpatch($9, $16 - $9);
-                        // Ensure that after the increment, we recheck the condition 
-                        backpatch($14, $6 - $14);
-                        // Backpatch to return to the condition after the stmt 
-                        backpatch($18, $11 - $18);
+                        // Jump to the increment step
+                        backpatch($9, $11 - $9);                      
+                        // Ensure that after the increment, we recheck the condition
+                        backpatch($13, $6 - $13);
+                        // Backpatch to return to the condition after the stmt
+                        backpatch($17, $8 - $17);
                         }
 
         | RETURN expr ';'
@@ -335,9 +335,7 @@ N       : /* empty */   { $$ = pc;	/* location of inst. to backpatch */
 			}
         ;
 
-O       : /* empty */   { $$ = pc;	/* location of inst. to backpatch */
-			  emit3(goto_, 0);
-		        } 
+P       : /* empty */   { emit(pop);	/* location of inst. to backpatch */ } 
 
 %%
 
