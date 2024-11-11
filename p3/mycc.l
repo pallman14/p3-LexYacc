@@ -41,7 +41,7 @@ int		{digit}+
 \/\*([^*]|(\*+[^*/]))*\*+\/		// ignore multiline comments 
 {id}                           { return install_id(); }
 0{oct}+                        { return install_oct(); }
-0(x|X){hex}                    { return install_hex(); }
+0(x|X){hex}                   { return install_hex(); }
 {quote}([^']|\\')*{quote}      { return install_chr(); }
 {int}						   { return install_int(); }
 "+="                           { return PA; }
@@ -133,7 +133,7 @@ static int install_hex()
 /* install_chr - convert ASCII character yytext[1] to yylval.num and return INT8 */
 static int install_chr()
 {
-	/* TODO: TO BE COMPLETED */
+	yylval.num = yytext[1];
 
 	return INT8;
 }
