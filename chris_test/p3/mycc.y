@@ -1,4 +1,9 @@
-/* TODO: TO BE COMPLETED */
+/* 
+Price, Chris, Lian, Gorana
+File: mycc.y
+Program: P3
+GCSC 554
+*/
 
 %{
 
@@ -33,13 +38,70 @@ static struct ClassFile cf;
 /* Note: install_id() returns Symbol* for both keywords and identifiers */
 %token <sym> BREAK DO ELSE FOR IF RETURN WHILE
 
-/* Declare operator tokens */
-/* TODO: TO BE COMPLETED WITH ASSOCIATIVITY AND PRECEDENCE DECLARATIONS */
-%token PA NA TA DA MA AA XA OA LA RA OR AN EQ NE LE GE LS RS AR PP NN
+/* Declare operator tokens with associativity and precedence */
+//1st Precedence 
+%left PP      //Postfix increment '++'
+%left NN      //Postfix decrement '--'
+%left '.'     //Dot Operator - Left to right
+   
+//2nd Precedence
+%right '!'     //Logical not
+%right '~'     //Bitwise complement
+
+//3rd Precedence
+%left '*'       //Multiplication
+%left '/'       //Division
+%left '%'       //Modulus
+
+//4th Precedence
+%right '+'      //Addition 
+%right '-'      //Subtraction
+
+//5th Precedence
+%left LS      //Left Shift '<<'
+%left RS      //Right Shift '>>'
+
+//6th Precedence
+%left LE      //Less than or equal to '<='
+%left GE      //Greater than or equal to '>='
+%left '<'      //Relational less than 
+%left '>'      //Relational greater than 
+
+//7th Precedence
+%left EQ        //Equal to '=='
+%left NE        //Not equal to '!='
+
+//8th Precedence
+%left '&'       //Bitwise AND  
+
+//9th Precedence
+%left '^'       //Bitwise exclusive OR
+
+//10th Precedence
+%left '|'       //Bitwise inclusive OR
+
+//11th Precedence
+%left AN      //Logical AND '&&'
+
+//12th Precedence
+%left OR      //Logical OR '||'
+
+//14th Precedence
+%right RA       //Right Shift Assignment '>>='
+%right LA       //Left Shift Assignment '<<='
+%right PA       //Plus Assignment '+='
+%right NA       //Minus Assignment '-='
+%right TA       //Times Assignment '*='
+%right DA       //Divide Assignment '/='
+%right MA       //Modulo Assignment '%='
+%right AA       //AND Assignment '&='
+%right XA       //XOR Assignment '^='
+%right OA       //OR Assignment '|='
+%right AR       //Assignment '='
 
 /* Declare attribute types for marker nonterminals, such as L M and N */
-/* TODO: TO BE COMPLETED WITH ADDITIONAL NONMARKERS AS NECESSARY */
-%type <loc> L M N
+/* Added P to implement for loop */
+%type <loc> L M N P
 
 %%
 
@@ -49,16 +111,42 @@ stmts   : stmts stmt
 
 stmt    : ';'
         | expr ';'      { emit(pop); /* do not leave a value on the stack */ }
-        | IF '(' expr ')' stmt
-                        { /* TODO: TO BE COMPLETED */ error("if-then not implemented"); }
-        | IF '(' expr ')' stmt ELSE stmt
-                        { /* TODO: TO BE COMPLETED */ error("if-then-else not implemented"); }
-        | WHILE '(' expr ')' stmt
-                        { /* TODO: TO BE COMPLETED */ error("while-loop not implemented"); }
-        | DO stmt WHILE '(' expr ')' ';'
-                        { /* TODO: TO BE COMPLETED */ error("do-while-loop not implemented"); }
-        | FOR '(' expr ';' expr ';' expr ')' stmt
-                        { /* TODO: TO BE COMPLETED */ error("for-loop not implemented"); }
+        | IF '(' expr ')' M stmt
+                        { // Backpatch the location stored in M to jump to the stmt if the condition is true
+                        backpatch($5, pc - $5); }
+
+        | IF '(' expr M ')' stmt N ELSE L stmt L
+                        { // Backpatch to the 'else' stmt if the condition is false
+                        backpatch($5, $9 - $5);
+                        // Backpatch to the end after the 'else' statement
+                        backpatch($8, $11 - $8); }
+
+        | WHILE '(' L expr ')' M stmt N
+                        { // Backpatch the conditional jump location M to execute the stmt if the condition is true
+                        backpatch($6, pc - $6);
+                        // Unconditional jump to reevaluate the condition
+                        backpatch($8, $3 - $8);
+                        // Backpatch to exit the loop if the condition is false
+                        // backpatch($8, pc - $8); 
+                        }
+
+        | DO L stmt WHILE '(' expr ')' M N L ';'
+                        { // Backpatch the conditional jump M to go to the beginning of DO
+                        backpatch($8, $10 - $8);
+                        // Backpatch to ensure the loop exits if the condition is false
+                        backpatch($9, $2 - $9);
+                        }
+        | FOR '(' expr P ';' L expr M N ';' L expr N ')' L stmt N
+                        { // Backpatch the condition check to jump to the stmt if true
+                        backpatch($8, pc - $8);
+                        // Jump to the increment step
+                        backpatch($9, $16 - $9);                      
+                        // Ensure that after the increment, we recheck the condition
+                        backpatch($14, $6 - $14);
+                        // Backpatch to return to the condition after the stmt
+                        backpatch($18, $11 - $18);
+                        }
+
         | RETURN expr ';'
                         { emit(istore_2); /* return val goes in local var 2 */ }
         | BREAK ';'
@@ -68,53 +156,308 @@ stmt    : ';'
         ;
 
 expr    : ID   '=' expr { emit(dup); emit2(istore, $1->localvar); }
-        | ID   PA  expr { /* TODO: TO BE COMPLETED */ error("+= operator not implemented"); }
-        | ID   NA  expr { /* TODO: TO BE COMPLETED */ error("-= operator not implemented"); }
-        | ID   TA  expr { /* TODO: TO BE COMPLETED */ error("*= operator not implemented"); }
-        | ID   DA  expr { /* TODO: TO BE COMPLETED */ error("/= operator not implemented"); }
-        | ID   MA  expr { /* TODO: TO BE COMPLETED */ error("%= operator not implemented"); }
-        | ID   AA  expr { /* TODO: TO BE COMPLETED */ error("&= operator not implemented"); }
-        | ID   XA  expr { /* TODO: TO BE COMPLETED */ error("^= operator not implemented"); }
-        | ID   OA  expr { /* TODO: TO BE COMPLETED */ error("|= operator not implemented"); }
-        | ID   LA  expr { /* TODO: TO BE COMPLETED */ error("<<= operator not implemented"); }
-        | ID   RA  expr { /* TODO: TO BE COMPLETED */ error(">>= operator not implemented"); }
-        | expr OR  expr { /* TODO: TO BE COMPLETED */ error("|| operator not implemented"); }
-        | expr AN  expr { /* TODO: TO BE COMPLETED */ error("&& operator not implemented"); }
-        | expr '|' expr { /* TODO: TO BE COMPLETED */ error("| operator not implemented"); }
-        | expr '^' expr { /* TODO: TO BE COMPLETED */ error("^ operator not implemented"); }
-        | expr '&' expr { /* TODO: TO BE COMPLETED */ error("& operator not implemented"); }
-        | expr EQ  expr { /* TODO: TO BE COMPLETED */ error("== operator not implemented"); }
-        | expr NE  expr { /* TODO: TO BE COMPLETED */ error("!= operator not implemented"); }
-        | expr '<' expr { /* TODO: TO BE COMPLETED */ error("< operator not implemented"); }
-        | expr '>' expr { /* TODO: TO BE COMPLETED */ error("> operator not implemented"); }
-        | expr LE  expr { /* TODO: TO BE COMPLETED */ error("<= operator not implemented"); }
-        | expr GE  expr { /* TODO: TO BE COMPLETED */ error(">= operator not implemented"); }
-        | expr LS  expr { /* TODO: TO BE COMPLETED */ error("<< operator not implemented"); }
-        | expr RS  expr { /* TODO: TO BE COMPLETED */ error(">> operator not implemented"); }
-        | expr '+' expr { /* TODO: TO BE COMPLETED */ error("+ operator not implemented"); }
-        | expr '-' expr { /* TODO: TO BE COMPLETED */ error("- operator not implemented"); }
-        | expr '*' expr { /* TODO: TO BE COMPLETED */ error("* operator not implemented"); }
-        | expr '/' expr { /* TODO: TO BE COMPLETED */ error("/ operator not implemented"); }
-        | expr '%' expr { /* TODO: TO BE COMPLETED */ error("% operator not implemented"); }
-        | '!' expr      { /* TODO: TO BE COMPLETED */ error("! operator not implemented"); }
-        | '~' expr      { /* TODO: TO BE COMPLETED */ error("~ operator not implemented"); }
-        | '+' expr %prec '!' /* '+' at same precedence level as '!' */
-                        { /* TODO: TO BE COMPLETED */ error("unary + operator not implemented"); }
-        | '-' expr %prec '!' /* '-' at same precedence level as '!' */
-                        { /* TODO: TO BE COMPLETED */ error("unary - operator not implemented"); }
-        | '(' expr ')'
-        | '$' INT8      { emit(aload_1); emit2(bipush, $2); emit(iaload); }
-        | PP ID         { /* TODO: TO BE COMPLETED */ error("pre ++ operator not implemented"); }
-        | NN ID         { /* TODO: TO BE COMPLETED */ error("pre -- operator not implemented"); }
-        | ID PP         { /* TODO: TO BE COMPLETED */ error("post ++ operator not implemented"); }
-        | ID NN         { /* TODO: TO BE COMPLETED */ error("post -- operator not implemented"); }
-        | ID            { emit2(iload, $1->localvar); }
-        | INT8          { emit2(bipush, $1); }
-        | INT16         { emit3(sipush, $1); }
-        | INT32         { emit2(ldc, constant_pool_add_Integer(&cf, $1)); }
-	| FLT		{ error("float constant not supported in Pr3"); }
-	| STR		{ error("string constant not supported in Pr3"); }
+        // ID += expr: Load the current value of ID, add expr, and store the result back into ID
+        | ID   PA  expr { emit2(iload , $1->localvar); emit(iadd); emit(dup); emit2(istore, $1->localvar); }
+        // ID -= expr: Load the current value of ID, subtract expr, and store the result back into ID
+        | ID   NA  expr { emit2(iload , $1->localvar); emit(swap); emit(isub); emit(dup); emit2(istore, $1->localvar); }
+        // ID *= expr: Load the current value of ID, multiply by expr, and store the result back into ID
+        | ID   TA  expr { emit2(iload , $1->localvar); emit(imul); emit(dup); emit2(istore, $1->localvar); }
+        // ID /= expr: Load the current value of ID, divide by expr, and store the result back into ID
+        | ID   DA  expr { emit2(iload , $1->localvar); emit(swap); emit(idiv); emit(dup); emit2(istore, $1->localvar); }
+        // ID %= expr: Load the current value of ID, calculate the remainder with expr, and store the result back into ID
+        | ID   MA  expr { emit2(iload , $1->localvar); emit(swap); emit(irem); emit(dup); emit2(istore, $1->localvar); }
+        // ID &= expr: Perform bitwise AND on ID and expr, store the result back into ID
+        | ID   AA  expr { emit2(iload , $1->localvar); emit(iand); emit(dup); emit2(istore, $1->localvar); }
+        // ID ^= expr: Perform bitwise XOR on ID and expr, store the result back into ID
+        | ID   XA  expr { emit2(iload , $1->localvar); emit(ixor); emit(dup); emit2(istore, $1->localvar); }
+        // ID |= expr: Perform bitwise OR on ID and expr, store the result back into ID
+        | ID   OA  expr { emit2(iload , $1->localvar); emit(ior); emit(dup); emit2(istore, $1->localvar); }
+        // ID <<= expr: Perform bitwise left shift on ID by expr, store the result back into ID
+        | ID   LA  expr { emit2(iload , $1->localvar); emit(swap); emit(ishl); emit(dup); emit2(istore, $1->localvar); }
+        // ID >>= expr: Perform bitwise right shift on ID by expr, store the result back into ID
+        | ID   RA  expr { emit2(iload , $1->localvar); emit(swap); emit(ishr); emit(dup); emit2(istore, $1->localvar); }
+        // Perform bitwise OR on expr 
+        | expr OR  expr { emit(ior); }
+        // Perform bitwise AND on expr 
+        | expr AN  expr { emit(iand); }
+        // Perform bitwise OR on expr 
+        | expr '|' expr { emit(ior); }
+        // Perform bitwise XOR on expr 
+        | expr '^' expr { emit(ixor); }
+        // Perform bitwise AND on expr 
+        | expr '&' expr { emit(iand); }
+
+        // expr == expr: Compare if two expressions are equal, if true push 1, otherwise skip to the next instruction.
+        | expr EQ expr { 
+                                // Save the current pc position to backpatch later
+                                int a = pc;
+
+                                // Emit an instruction to compare the two expressions (if_icmpeq). 
+                                // If they are equal, it will jump to the next instruction (emitting 1).
+                                emit3(if_icmpeq, 0);  
+                                
+                                // If the expressions are not equal, we need to push a 0 to indicate inequality
+                                emit(iconst_0);  
+                                
+                                // Save the current pc again, so we can backpatch it later if the comparison fails
+                                int b = pc;
+                                
+                                // Emit a 'goto' instruction to skip over the 1 that will be emitted later.
+                                // This prevents executing the part where 1 is emitted if the comparison was true.
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the instruction at position 'a' (the original comparison).
+                                // Update it to jump to the current pc (the location after we emit 1).
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate equality if the comparison was true
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto instruction at position 'b' to ensure it jumps over the 1 if needed
+                                backpatch(b, pc - b);
+
+		        }
+
+        // Comparison of two expressions for inequality (!=)                
+        | expr NE  expr 
+        		{ 
+				// Save the current pc to be used for backpatching
+                                int a = pc;
+                                
+                                // Emit an instruction to compare if the values are not equal (if_icmpne). 
+                                // If they are not equal, jump to the instruction to emit 1.
+                                emit3(if_icmpne, 0);  
+                                
+                                // Emit 0 if the values are equal
+                                emit(iconst_0);  
+                                
+                                // Save the current pc position to backpatch the 'goto' instruction later
+                                int b = pc;
+                                
+                                // Emit 'goto' to skip over the part where 1 will be emitted, 
+                                // which is only needed if the comparison is true (i.e., values are not equal).
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction at position 'a' to jump to the pc after emitting 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate that the values were not equal (this happens if the comparison was true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto at position 'b' so it skips the emitting of 1 if the comparison was false
+                                backpatch(b, pc - b);
+			}
+
+        // Comparison for Less than (>)
+        | expr '<' expr 
+        		{ 
+				// Save the current pc for backpatching
+                                int a = pc;
+                                
+                                // Emit a comparison instruction (if_icmplt) to check if the left value is less than the right.
+                                // If true, jump to the instruction to emit 1.
+                                emit3(if_icmplt, 0);  
+                                
+                                // Emit 0 if the left value is not less than the right value
+                                emit(iconst_0);  
+                                
+                                // Save the current pc position to backpatch the 'goto' instruction later
+                                int b = pc;
+                                
+                                // Emit 'goto' to skip the emission of 1 if the left value is not less than the right
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction to jump to the code after emitting 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate the left value is less than the right value (this happens if the comparison is true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto instruction to ensure it skips the emission of 1 if the comparison was false
+                                backpatch(b, pc - b);
+			}
+
+        // Comparison for greater than (>)
+        | expr '>' expr 
+        		{ 
+				// Save the current pc to use later for backpatching
+                                int a = pc;
+                                
+                                // Emit an instruction (if_icmpgt) to compare if the left value is greater than the right value
+                                // If true, it will jump to the next instruction that will emit 1.
+                                emit3(if_icmpgt, 0);  
+                                
+                                // Emit 0 if the left value is not greater than the right value
+                                emit(iconst_0);  
+                                
+                                // Save the current pc position so it can be backpatched later
+                                int b = pc;
+                                
+                                // Emit goto to skip over the 1 emission if the comparison fails 
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction at position 'a' to jump to the code after 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate the left value is greater than the right (if the comparison was true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto to skip emitting 1 if the comparison fails
+                                backpatch(b, pc - b);
+                        }
+
+        // Comparison for less than or equal to (<=)
+        | expr LE expr 
+                        { 
+                                // Save the current pc for backpatching
+                                int a = pc;
+                                
+                                // Emit the instruction (if_icmple) to compare if the left value is less than or equal to the right
+                                // If true, jump to emit 1
+                                emit3(if_icmple, 0);  
+                                
+                                // Emit 0 if the comparison fails 
+                                emit(iconst_0);  
+                                
+                                // Save the pc for backpatching the goto instruction
+                                int b = pc;
+                                
+                                // Emit goto to skip over the 1 emission if the comparison fails
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison at position 'a' to jump to after emitting 1 if comparison is true
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate left <= right if the comparison was true
+                                emit(iconst_1);
+                                
+                                // Backpatch the 'goto' at position 'b' to skip over the 1 if comparison was false
+                                backpatch(b, pc - b);
+                        }
+
+        // Comparison for greater than or equal to (>=)
+        | expr GE expr 
+                        { 
+                                // Save the current pc for backpatching
+                                int a = pc;
+                                
+                                // Emit the instruction (if_icmpge) to check if the left value is greater than or equal to the right value
+                                // If true, jump to the instruction that emits 1
+                                emit3(if_icmpge, 0);  
+                                
+                                // Emit 0 if the comparison is false 
+                                emit(iconst_0);  
+                                
+                                // Save the current pc to backpatch the 'goto' instruction
+                                int b = pc;
+                                
+                                // Emit a goto to skip over the 1 emission if the comparison fails
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction at position 'a' to jump to after emitting 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate the left value is greater than or equal to the right (if comparison is true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto at position 'b' to skip over the 1 if comparison fails
+                                backpatch(b, pc - b);
+                        }
+
+        // Perform left shift operation
+        | expr LS expr { emit(ishl); } // Emit bytecode for left shift operation (<<)
+        /* Perform right shift operation */
+        | expr RS expr { emit(ishr); }  // Emit bytecode for right shift operation (>>)
+        /* Perform addition */
+        | expr '+' expr { emit(iadd); } // Emit bytecode for integer addition
+        /* Perform subtraction */
+        | expr '-' expr { emit(isub); } // Emit bytecode for integer subtraction
+        /* Perform multiplication */
+        | expr '*' expr { emit(imul); } // Emit bytecode for integer multiplication
+        /* Perform division */
+        | expr '/' expr { emit(idiv); } // Emit bytecode for integer division
+        /* Perform modulus operation */
+        | expr '%' expr { emit(irem); } // Emit bytecode for integer remainder (modulus)
+
+        // Logical NOT operation: Negate the value of the expression, add 1 to flip the result.
+        | '!' expr { emit(ineg); emit(iconst_1); emit(iadd); }
+        // Bitwise NOT operation: Negate the value and add 1 to get the bitwise complement.
+        | '~' expr { emit(ineg); emit(iconst_1); emit(iadd); }
+        // '+' at the same precedence level as '!' 
+        | '+' expr %prec '!' {  // Unary '+' does nothing, so leave empty to ignore this case.
+        }
+        // '-' at the same precedence level as '!' 
+        | '-' expr %prec '!' { 
+                 // Unary minus: Negate the value of the expression.
+                emit(ineg); 
+        }
+        | '(' expr ')' { 
+        // Expression enclosed in parentheses: Do nothing special, just evaluate the inner expression.
+        }
+        | '$' INT8 { 
+                // Load value from an array stored in the first local variable, indexed by the given INT8.
+                emit(aload_1); 
+                emit2(bipush, $2); 
+                emit(iaload); 
+        }
+        | PP ID { 
+                // Pre-increment: Increment the value of ID by 1, duplicate the result, and store it back in ID.
+                emit(iconst_1); 
+                emit2(iload, $2->localvar); 
+                emit(iadd); 
+                emit(dup); 
+                emit2(istore, $2->localvar); 
+        }
+        | NN ID { 
+                // Pre-decrement: Load the value of ID, subtract 1, duplicate the result, and store it back in ID.
+                emit2(iload, $2->localvar); 
+                emit(iconst_1); 
+                emit(isub); 
+                emit(dup); 
+                emit2(istore, $2->localvar); 
+        }
+        | ID PP { 
+                // Post-increment: Load the value of ID, duplicate it, increment by 1, and store the result back in ID.
+                emit2(iload, $1->localvar); 
+                emit(dup); 
+                emit(iconst_1); 
+                emit(iadd); 
+                emit2(istore, $1->localvar); 
+        }
+        | ID NN { 
+                // Post-decrement: Load the value of ID, duplicate it, subtract 1, and store the result back in ID.
+                emit2(iload, $1->localvar); 
+                emit(dup); 
+                emit(iconst_1); 
+                emit(isub); 
+                emit2(istore, $1->localvar); 
+        }
+        | ID { 
+                // Simple variable reference: Load the value of ID onto the stack.
+                emit2(iload, $1->localvar); 
+        }
+        | INT8 { 
+                // Load an 8-bit integer constant onto the stack.
+                emit2(bipush, $1); 
+        }
+        | INT16 { 
+                // Load a 16-bit integer constant onto the stack.
+                emit3(sipush, $1); 
+        }
+        | INT32 { 
+                // Load a 32-bit integer constant onto the stack using the constant pool.
+                emit2(ldc, constant_pool_add_Integer(&cf, $1)); 
+        }
+        | FLT { 
+                // Floating-point constants are not supported in this project.
+                error("float constant not supported in Pr3"); 
+        }
+        | STR { 
+                // String constants are not supported in this project.
+                error("string constant not supported in Pr3"); 
+        }
         ;
+
 
 L       : /* empty */   { $$ = pc; }
         ;
@@ -129,7 +472,7 @@ N       : /* empty */   { $$ = pc;	/* location of inst. to backpatch */
 			}
         ;
 
-/* TODO: TO BE COMPLETED WITH ADDITIONAL NONMARKERS AS NEEDED */
+P       : /* empty */   { emit(pop);	/* location of inst. to backpatch */ } 
 
 %%
 
@@ -245,4 +588,6 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+
+
 

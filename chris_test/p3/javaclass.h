@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+
 
 // The value of the access_flags item is a mask of flags used to denote access permissions to and properties of a class, interface, field, or method. 
 enum access_flags
