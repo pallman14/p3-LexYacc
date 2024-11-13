@@ -11,6 +11,11 @@ GCSC 554
 #include "global.h"
 static struct ClassFile cf;
 
+struct BreakStack {
+    int locations[100];
+    int count;
+} breakStack;
+
 %}
 
 /* declares YYSTYPE type of attribute for all tokens and nonterminals */
@@ -113,6 +118,9 @@ stmt    : ';'
                         backpatch($8, $3 - $8);
                         // Backpatch to exit the loop if the condition is false
                         // backpatch($8, pc - $8); 
+                        for (int i = 0; i < breakStack.count; i++) {
+                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                        }
                         }
 
         | DO L stmt WHILE '(' expr ')' M N L';'
@@ -120,6 +128,9 @@ stmt    : ';'
                         backpatch($8, $10 - $8);
                         // Backpatch to ensure the loop exits if the condition is false
                         backpatch($9, $2 - $9);
+                        for (int i = 0; i < breakStack.count; i++) {
+                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                        }
                         }
         | FOR '(' expr  P ';' L expr M N ';' L expr P N ')' L stmt N
                         { // Backpatch the condition check to jump to the stmt if true
@@ -130,12 +141,21 @@ stmt    : ';'
                         backpatch($14, $6 - $14);
                         // Backpatch to return to the condition after the stmt
                         backpatch($18, $11 - $18);
+                        for (int i = 0; i < breakStack.count; i++) {
+                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                        }
                         }
 
         | RETURN expr ';'
                         { emit(istore_2); /* return val goes in local var 2 */ }
         | BREAK ';'
-                        { /* TODO: BONUS!!! */ error("break not implemented"); }
+                        { {
+                                // Emit a goto instruction for the break
+                                emit3(goto_, 0);
+
+                                // Save the location for later backpatching
+                                breakStack.locations[breakStack.count++] = pc - 1;
+                        } }
         | '{' stmts '}'
         | error ';'     { yyerrok; }
         ;
