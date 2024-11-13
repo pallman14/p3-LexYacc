@@ -159,6 +159,7 @@ stmt    : ';'
                         while (breakStack.top >= 0 && breakStack.locations[breakStack.top] < exitLabel) {
                         backpatch(popBreak(), pc - exitLabel);
                         }
+                        breakStack.top = -1; // Clear the break stack after each loop
                         }
 
         | DO L stmt WHILE '(' expr ')' M N L';'
@@ -173,6 +174,7 @@ stmt    : ';'
                         while (breakStack.top >= 0 && breakStack.locations[breakStack.top] < exitLabel) {
                         backpatch(popBreak(), pc - exitLabel);
                         }
+                        breakStack.top = -1; // Clear the break stack after each loop
                         }
         | FOR '(' expr  P ';' L expr M N ';' L expr P N ')' L stmt N
                         { 
@@ -190,10 +192,14 @@ stmt    : ';'
                         while (breakStack.top >= 0 && breakStack.locations[breakStack.top] < exitLabel) {
                         backpatch(popBreak(), pc - exitLabel);
                         }
+                        breakStack.top = -1; // Clear the break stack after each loop
                         }
 
         | RETURN expr ';'
-                        { emit(istore_2); /* return val goes in local var 2 */ }
+                        { emit(istore_2); /* return val goes in local var 2 */ 
+                        emit(iload_2);   // Load result for return or printing
+                        emit(return_);   // Use the correct return based on the method type     
+                        }
         | BREAK ';'
                         { {
                         // Emit a goto instruction for the break
@@ -235,6 +241,7 @@ expr    : ID   '=' expr { emit(dup); emit2(istore, $1->localvar); }
         | expr '^' expr { emit(ixor); }
         // Perform bitwise AND on expr 
         | expr '&' expr { emit(iand); }
+        | expr ';' { emit(pop);}
 
         // expr == expr: Compare if two expressions are equal, if true push 1, otherwise skip to the next instruction.
         | expr EQ expr { 
@@ -530,7 +537,7 @@ int main(int argc, char **argv)
 	int index1, index2, index3;
 	int label1, label2;
         initBreakStack();  // Initialize break stack
-
+        breakStack.top = -1; // Ensure breakStack is at initial state
 	// set up new class file structure
 	init_ClassFile(&cf);
 
