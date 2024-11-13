@@ -115,7 +115,7 @@ stmt    : ';'
                         { // Backpatch the location stored in M to jump to the stmt if the condition is true
                         backpatch($5, pc - $5); }
 
-        | IF '(' expr M ')' stmt N ELSE L stmt L
+        | IF '(' expr ')' M stmt  ELSE  N L stmt L 
                         { // Backpatch to the 'else' stmt if the condition is false
                         backpatch($5, $9 - $5);
                         // Backpatch to the end after the 'else' statement
@@ -130,13 +130,13 @@ stmt    : ';'
                         // backpatch($8, pc - $8); 
                         }
 
-        | DO L stmt WHILE '(' expr ')' M N L ';'
+        | DO L stmt WHILE '(' expr ')' M N L';'
                         { // Backpatch the conditional jump M to go to the beginning of DO
                         backpatch($8, $10 - $8);
                         // Backpatch to ensure the loop exits if the condition is false
                         backpatch($9, $2 - $9);
                         }
-        | FOR '(' expr P ';' L expr M N ';' L expr N ')' L stmt N
+        | FOR '(' expr  P ';' L expr M N ';' L expr P N ')' L stmt N
                         { // Backpatch the condition check to jump to the stmt if true
                         backpatch($8, pc - $8);
                         // Jump to the increment step
