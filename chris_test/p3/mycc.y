@@ -39,65 +39,50 @@ static struct ClassFile cf;
 %token <sym> BREAK DO ELSE FOR IF RETURN WHILE
 
 /* Declare operator tokens with associativity and precedence */
-//1st Precedence 
-%left PP      //Postfix increment '++'
-%left NN      //Postfix decrement '--'
-%left '.'     //Dot Operator - Left to right
-   
-//2nd Precedence
-%right '!'     //Logical not
-%right '~'     //Bitwise complement
+/*Precedence 14*/
+%right AA XA OA
+%right RA LA
+%right TA DA MA
+%right PA NA
+%right '='
 
-//3rd Precedence
-%left '*'       //Multiplication
-%left '/'       //Division
-%left '%'       //Modulus
+/* Precedence 12 */
+%left OR
 
-//4th Precedence
-%right '+'      //Addition 
-%right '-'      //Subtraction
+/* Precedence 11 */
+%left AN
 
-//5th Precedence
-%left LS      //Left Shift '<<'
-%left RS      //Right Shift '>>'
+/* Precedence 10 */
+%left '|'
 
-//6th Precedence
-%left LE      //Less than or equal to '<='
-%left GE      //Greater than or equal to '>='
-%left '<'      //Relational less than 
-%left '>'      //Relational greater than 
+/* Precedence 9 */
+%left '^'
 
-//7th Precedence
-%left EQ        //Equal to '=='
-%left NE        //Not equal to '!='
+/* Precedence 8 */ 
+%left '&'
 
-//8th Precedence
-%left '&'       //Bitwise AND  
+/* Precedence 7 */
+%left EQ NE
 
-//9th Precedence
-%left '^'       //Bitwise exclusive OR
+/* Precedence 6 */
+%left '<' LE  '>' GE
 
-//10th Precedence
-%left '|'       //Bitwise inclusive OR
+/* Precedence 5 */
+%left LS RS
 
-//11th Precedence
-%left AN      //Logical AND '&&'
+/* Precedence 4 */
+%right '+' '-'
 
-//12th Precedence
-%left OR      //Logical OR '||'
+/* Precedence 3 */
+%left '*' '/' '%'
 
-//14th Precedence
-%right RA       //Right Shift Assignment '>>='
-%right LA       //Left Shift Assignment '<<='
-%right PA       //Plus Assignment '+='
-%right NA       //Minus Assignment '-='
-%right TA       //Times Assignment '*='
-%right DA       //Divide Assignment '/='
-%right MA       //Modulo Assignment '%='
-%right AA       //AND Assignment '&='
-%right XA       //XOR Assignment '^='
-%right OA       //OR Assignment '|='
-%right AR       //Assignment '='
+/* Precedence 2 */
+%right '!' '~'
+
+/* Precedence 1 */
+%left AR
+%left '.'
+%left PP NN
 
 /* Declare attribute types for marker nonterminals, such as L M and N */
 /* Added P to implement for loop */
