@@ -115,9 +115,9 @@ stmt    : ';'
                         { // Backpatch the location stored in M to jump to the stmt if the condition is true
                         backpatch($5, pc - $5); }
 
-        | IF '(' expr ')' M stmt N ELSE L stmt L
+        | IF '(' expr M ')' stmt N ELSE L stmt L
                         { // Backpatch to the 'else' stmt if the condition is false
-                        backpatch($5, $9 - $5);
+                        backpatch($4, $9 - $4);
                         // Backpatch to the end after the 'else' statement
                         backpatch($7, $11 - $7); }
 
@@ -126,6 +126,8 @@ stmt    : ';'
                         backpatch($6, pc - $6);
                         // Unconditional jump to reevaluate the condition
                         backpatch($8, $3 - $8);
+                        // Backpatch to exit the loop if the condition is false
+                        backpatch($8, pc - $8); 
                         }
 
         | DO L stmt WHILE '(' expr ')' M N L ';'
@@ -187,45 +189,180 @@ expr    : ID   '=' expr { emit(dup); emit2(istore, $1->localvar); }
 
         // expr == expr: Compare if two expressions are equal, if true push 1, otherwise skip to the next instruction.
         | expr EQ expr { 
-                emit3(if_icmpeq, 7); // Compare the two topmost values on the stack. If they are equal, jump 7 bytes ahead.
-                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
-                emit(iconst_1); // If they are equal, push 1 (true) to the stack.
-        }
+                                // Save the current pc position to backpatch later
+                                int a = pc;
 
-        // expr != expr: Compare if two expressions are not equal, if true push 1, otherwise skip to the next instruction.
-        | expr NE expr { 
-                emit3(if_icmpne, 7); // Compare the two topmost values on the stack. If they are not equal, jump 7 bytes ahead.
-                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
-                emit(iconst_1); // If they are not equal, push 1 (true) to the stack.
-        }
+                                // Emit an instruction to compare the two expressions (if_icmpeq). 
+                                // If they are equal, it will jump to the next instruction (emitting 1).
+                                emit3(if_icmpeq, 0);  
+                                
+                                // If the expressions are not equal, we need to push a 0 to indicate inequality
+                                emit(iconst_0);  
+                                
+                                // Save the current pc again, so we can backpatch it later if the comparison fails
+                                int b = pc;
+                                
+                                // Emit a 'goto' instruction to skip over the 1 that will be emitted later.
+                                // This prevents executing the part where 1 is emitted if the comparison was true.
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the instruction at position 'a' (the original comparison).
+                                // Update it to jump to the current pc (the location after we emit 1).
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate equality if the comparison was true
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto instruction at position 'b' to ensure it jumps over the 1 if needed
+                                backpatch(b, pc - b);
 
-        // expr < expr: Compare if the first expression is less than the second, if true push 1, otherwise skip to the next instruction.
-        | expr '<' expr { 
-                emit3(if_icmplt, 7); // Compare if the first value is less than the second. If true, jump 7 bytes ahead.
-                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
-                emit(iconst_1); // If the first value is less, push 1 (true) to the stack.
-        }
+		        }
 
-        // expr > expr: Compare if the first expression is greater than the second, if true push 1, otherwise skip to the next instruction.
-        | expr '>' expr { 
-                emit3(if_icmpgt, 7); // Compare if the first value is greater than the second. If true, jump 7 bytes ahead.
-                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
-                emit(iconst_1); // If the first value is greater, push 1 (true) to the stack.
-        }
+        // Comparison of two expressions for inequality (!=)                
+        | expr NE  expr 
+        		{ 
+				// Save the current pc to be used for backpatching
+                                int a = pc;
+                                
+                                // Emit an instruction to compare if the values are not equal (if_icmpne). 
+                                // If they are not equal, jump to the instruction to emit 1.
+                                emit3(if_icmpne, 0);  
+                                
+                                // Emit 0 if the values are equal
+                                emit(iconst_0);  
+                                
+                                // Save the current pc position to backpatch the 'goto' instruction later
+                                int b = pc;
+                                
+                                // Emit 'goto' to skip over the part where 1 will be emitted, 
+                                // which is only needed if the comparison is true (i.e., values are not equal).
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction at position 'a' to jump to the pc after emitting 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate that the values were not equal (this happens if the comparison was true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto at position 'b' so it skips the emitting of 1 if the comparison was false
+                                backpatch(b, pc - b);
+			}
 
-        // expr <= expr: Compare if the first expression is less than or equal to the second, if true push 1, otherwise skip to the next instruction.
-        | expr LE expr { 
-                emit3(if_icmple, 7); // Compare if the first value is less than or equal to the second. If true, jump 7 bytes ahead.
-                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
-                emit(iconst_1); // If the first value is less than or equal, push 1 (true) to the stack.
-        }
+        // Comparison for Less than (>)
+        | expr '<' expr 
+        		{ 
+				// Save the current pc for backpatching
+                                int a = pc;
+                                
+                                // Emit a comparison instruction (if_icmplt) to check if the left value is less than the right.
+                                // If true, jump to the instruction to emit 1.
+                                emit3(if_icmplt, 0);  
+                                
+                                // Emit 0 if the left value is not less than the right value
+                                emit(iconst_0);  
+                                
+                                // Save the current pc position to backpatch the 'goto' instruction later
+                                int b = pc;
+                                
+                                // Emit 'goto' to skip the emission of 1 if the left value is not less than the right
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction to jump to the code after emitting 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate the left value is less than the right value (this happens if the comparison is true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto instruction to ensure it skips the emission of 1 if the comparison was false
+                                backpatch(b, pc - b);
+			}
 
-        // expr >= expr: Compare if the first expression is greater than or equal to the second, if true push 1, otherwise skip to the next instruction.
-        | expr GE expr { 
-                emit3(if_icmpge, 7); // Compare if the first value is greater than or equal to the second. If true, jump 7 bytes ahead.
-                emit3(goto_, 4); // Jump 4 bytes ahead to skip the next instruction.
-                emit(iconst_1); // If the first value is greater than or equal, push 1 (true) to the stack.
-        }
+        // Comparison for greater than (>)
+        | expr '>' expr 
+        		{ 
+				// Save the current pc to use later for backpatching
+                                int a = pc;
+                                
+                                // Emit an instruction (if_icmpgt) to compare if the left value is greater than the right value
+                                // If true, it will jump to the next instruction that will emit 1.
+                                emit3(if_icmpgt, 0);  
+                                
+                                // Emit 0 if the left value is not greater than the right value
+                                emit(iconst_0);  
+                                
+                                // Save the current pc position so it can be backpatched later
+                                int b = pc;
+                                
+                                // Emit goto to skip over the 1 emission if the comparison fails 
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction at position 'a' to jump to the code after 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate the left value is greater than the right (if the comparison was true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto to skip emitting 1 if the comparison fails
+                                backpatch(b, pc - b);
+                        }
+
+        // Comparison for less than or equal to (<=)
+        | expr LE expr 
+                        { 
+                                // Save the current pc for backpatching
+                                int a = pc;
+                                
+                                // Emit the instruction (if_icmple) to compare if the left value is less than or equal to the right
+                                // If true, jump to emit 1
+                                emit3(if_icmple, 0);  
+                                
+                                // Emit 0 if the comparison fails 
+                                emit(iconst_0);  
+                                
+                                // Save the pc for backpatching the goto instruction
+                                int b = pc;
+                                
+                                // Emit goto to skip over the 1 emission if the comparison fails
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison at position 'a' to jump to after emitting 1 if comparison is true
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate left <= right if the comparison was true
+                                emit(iconst_1);
+                                
+                                // Backpatch the 'goto' at position 'b' to skip over the 1 if comparison was false
+                                backpatch(b, pc - b);
+                        }
+
+        // Comparison for greater than or equal to (>=)
+        | expr GE expr 
+                        { 
+                                // Save the current pc for backpatching
+                                int a = pc;
+                                
+                                // Emit the instruction (if_icmpge) to check if the left value is greater than or equal to the right value
+                                // If true, jump to the instruction that emits 1
+                                emit3(if_icmpge, 0);  
+                                
+                                // Emit 0 if the comparison is false 
+                                emit(iconst_0);  
+                                
+                                // Save the current pc to backpatch the 'goto' instruction
+                                int b = pc;
+                                
+                                // Emit a goto to skip over the 1 emission if the comparison fails
+                                emit3(goto_, 0);
+                                
+                                // Backpatch the comparison instruction at position 'a' to jump to after emitting 1
+                                backpatch(a, pc - a);
+                                
+                                // Emit 1 to indicate the left value is greater than or equal to the right (if comparison is true)
+                                emit(iconst_1);
+                                
+                                // Backpatch the goto at position 'b' to skip over the 1 if comparison fails
+                                backpatch(b, pc - b);
+                        }
 
         // Perform left shift operation
         | expr LS expr { emit(ishl); } // Emit bytecode for left shift operation (<<)
