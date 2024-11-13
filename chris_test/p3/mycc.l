@@ -26,15 +26,11 @@ static int install_chr();
 /*From p2*/
 quote	\'
 ditto	\"
-delim	[ \t\n\v\r\f]
-ws		{delim}+
 alpha   [a-zA-Z_]
 digit   [0-9]
 oct		[0-7]
-exp		[eE][+-]?{digit}+
 hex     [{digit}a-fA-F]
 id		{alpha}({alpha}|{digit})*
-number	{digit}*\.{digit}*{exp}?
 int		{digit}+
 
 %%
