@@ -9,12 +9,47 @@ GCSC 554
 
 #include "lex.yy.h"
 #include "global.h"
+#define MAX_BREAK_STACK_SIZE 100  // Maximum depth of break stack
 static struct ClassFile cf;
 
 struct BreakStack {
-    int locations[100];
-    int count;
+    int locations[MAX_BREAK_STACK_SIZE];
+    int top;
 } breakStack;
+
+// Initialize the break stack
+void initBreakStack() {
+    breakStack.top = -1;
+}
+
+// Push a location onto the break stack
+void pushBreak(int location) {
+    if (breakStack.top < MAX_BREAK_STACK_SIZE - 1) {
+        breakStack.locations[++breakStack.top] = location;
+    } else {
+        error("Break stack overflow");
+    }
+}
+
+// Pop a location from the break stack
+int popBreak() {
+    if (breakStack.top >= 0) {
+        return breakStack.locations[breakStack.top--];
+    } else {
+        error("Break stack underflow");
+        return -1;  // Return an invalid value
+    }
+}
+
+// Peek the top location on the break stack
+int topBreak() {
+    if (breakStack.top >= 0) {
+        return breakStack.locations[breakStack.top];
+    } else {
+        error("Break stack is empty");
+        return -1;  // Return an invalid value
+    }
+}
 
 %}
 
@@ -112,30 +147,38 @@ stmt    : ';'
                         backpatch($8, $11 - $8); }
 
         | WHILE '(' L expr ')' M stmt N
-                        { // Backpatch the conditional jump location M to execute the stmt if the condition is true
+                        { 
+
+                        int exitLabel = pc;
+                        pushBreak(exitLabel);  // Push exit label for this loop onto the stack
+                        // Backpatch the conditional jump location M to execute the stmt if the condition is true
                         backpatch($6, pc - $6);
                         // Unconditional jump to reevaluate the condition
                         backpatch($8, $3 - $8);
-                        // Backpatch to exit the loop if the condition is false
-                        // backpatch($8, pc - $8); 
-                        for (int i = 0; i < breakStack.count; i++) {
-                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                        // After loop ends, backpatch break statements for this loop
+                        while (breakStack.top >= 0 && breakStack.locations[breakStack.top] < exitLabel) {
+                        backpatch(popBreak(), pc - exitLabel);
                         }
-                        breakStack.count = 0;
                         }
 
         | DO L stmt WHILE '(' expr ')' M N L';'
-                        { // Backpatch the conditional jump M to go to the beginning of DO
+                        { 
+                        int exitLabel = pc;
+                        pushBreak(exitLabel);  // Push exit label for this loop onto the stack        
+                        // Backpatch the conditional jump M to go to the beginning of DO
                         backpatch($8, $10 - $8);
                         // Backpatch to ensure the loop exits if the condition is false
                         backpatch($9, $2 - $9);
-                        for (int i = 0; i < breakStack.count; i++) {
-                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                        // Backpatch any breaks that apply to this loop
+                        while (breakStack.top >= 0 && breakStack.locations[breakStack.top] < exitLabel) {
+                        backpatch(popBreak(), pc - exitLabel);
                         }
-                        breakStack.count = 0;
                         }
         | FOR '(' expr  P ';' L expr M N ';' L expr P N ')' L stmt N
-                        { // Backpatch the condition check to jump to the stmt if true
+                        { 
+                        int exitLabel = pc;
+                        pushBreak(exitLabel);  // Push exit label for this loop onto the stack
+                        // Backpatch the condition check to jump to the stmt if true
                         backpatch($8, pc - $8);
                         // Jump to the increment step
                         backpatch($9, $16 - $9);                      
@@ -143,24 +186,19 @@ stmt    : ';'
                         backpatch($14, $6 - $14);
                         // Backpatch to return to the condition after the stmt
                         backpatch($18, $11 - $18);
-                        for (int i = 0; i < breakStack.count; i++) {
-                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                        // Backpatch any breaks that apply to this loop
+                        while (breakStack.top >= 0 && breakStack.locations[breakStack.top] < exitLabel) {
+                        backpatch(popBreak(), pc - exitLabel);
                         }
-                        breakStack.count = 0;
                         }
 
         | RETURN expr ';'
                         { emit(istore_2); /* return val goes in local var 2 */ }
         | BREAK ';'
                         { {
-                                // Emit a goto instruction for the break
-                                emit3(goto_, 0);
-
-                                // Save the location for later backpatching
-                                breakStack.locations[breakStack.count++] = pc - 1;
-                                if (breakStack.count >= 100) {
-                                        error("Break stack overflow");
-                                }
+                        // Emit a goto instruction for the break
+                        emit3(goto_, 0);  // Emit jump instruction for break
+                        pushBreak(pc - 1); // Push current program counter to be backpatched later
                         } }
         | '{' stmts '}'
         | error ';'     { yyerrok; }
@@ -491,7 +529,7 @@ int main(int argc, char **argv)
 {
 	int index1, index2, index3;
 	int label1, label2;
-        breakStack.count = 0;
+        initBreakStack();  // Initialize break stack
 
 	// set up new class file structure
 	init_ClassFile(&cf);
