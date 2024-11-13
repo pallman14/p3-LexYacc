@@ -136,7 +136,9 @@ stmt    : ';'
                         breakStack.count = 0;
                         }
         | FOR '(' expr  P ';' L expr M N ';' L expr P N ')' L stmt N
-                        { // Backpatch the condition check to jump to the stmt if true
+                        { 
+                        int exitLabel = pc;
+                        // Backpatch the condition check to jump to the stmt if true
                         backpatch($8, pc - $8);
                         // Jump to the increment step
                         backpatch($9, $16 - $9);                      
@@ -145,7 +147,7 @@ stmt    : ';'
                         // Backpatch to return to the condition after the stmt
                         backpatch($18, $11 - $18);
                         for (int i = 0; i < breakStack.count; i++) {
-                                backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
+                                backpatch(breakStack.locations[i], exitLabel - breakStack.locations[i]);
                         }
                         breakStack.count = 0;
                         }
