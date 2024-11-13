@@ -133,7 +133,9 @@ static int install_hex()
 /* install_chr - convert ASCII character yytext[1] to yylval.num and return INT8 */
 static int install_chr()
 {
-	yylval.num = yytext[1];
+	char temp;
+	sscanf(yytext + 1, "%c", &temp);
+	yylval.num = (int)temp;
 
 	return INT8;
 }
