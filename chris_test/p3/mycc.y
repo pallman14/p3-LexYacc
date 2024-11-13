@@ -121,6 +121,7 @@ stmt    : ';'
                         for (int i = 0; i < breakStack.count; i++) {
                                 backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
                         }
+                        breakStack.count = 0;
                         }
 
         | DO L stmt WHILE '(' expr ')' M N L';'
@@ -131,6 +132,7 @@ stmt    : ';'
                         for (int i = 0; i < breakStack.count; i++) {
                                 backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
                         }
+                        breakStack.count = 0;
                         }
         | FOR '(' expr  P ';' L expr M N ';' L expr P N ')' L stmt N
                         { // Backpatch the condition check to jump to the stmt if true
@@ -144,6 +146,7 @@ stmt    : ';'
                         for (int i = 0; i < breakStack.count; i++) {
                                 backpatch(breakStack.locations[i], pc - breakStack.locations[i]);
                         }
+                        breakStack.count = 0;
                         }
 
         | RETURN expr ';'
@@ -155,6 +158,9 @@ stmt    : ';'
 
                                 // Save the location for later backpatching
                                 breakStack.locations[breakStack.count++] = pc - 1;
+                                if (breakStack.count >= 100) {
+                                        error("Break stack overflow");
+                                }
                         } }
         | '{' stmts '}'
         | error ';'     { yyerrok; }
@@ -485,6 +491,7 @@ int main(int argc, char **argv)
 {
 	int index1, index2, index3;
 	int label1, label2;
+        breakStack.count = 0;
 
 	// set up new class file structure
 	init_ClassFile(&cf);
