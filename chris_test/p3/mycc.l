@@ -5,6 +5,9 @@
 %option noyywrap
 %option yylineno
 %option nounistd
+%option nounput
+%option noinput
+%option always-interactive
 
 %{
 
